@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Code Tutoring</title>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            background: #f9f9f9;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .task-section {
+            width: 30%;
+            padding: 20px;
+            background: #f9f9f9;
+            border-right: 1px solid #ddd;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .editor-section {
+            width: 70%;
+            padding: 20px;
+            background: #f9f9f9;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        #editor {
+            height: 70vh;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+        }
+        h2, h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        p {
+            color: #555;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        .instruction {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s;
+        }
+        .instruction:hover {
+            background-color: #f0f0f0;
+        }
+        .instruction h3 {
+            margin-top: 0;
+        }
+        .hint {
+            display: none;
+            margin-top: 10px;
+            color: #777;
+            font-style: italic;
+            background-color: #eef;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .hint-button {
+            background-color: #28a745;
+            margin-top: 10px;
+        }
+        .hint-button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="task-section">
+            <h2>Task</h2>
+            <p id="task-description">Write a function to find the nth Fibonacci number using recursion.</p>
+            <div id="instructions">
+                <div class="instruction" id="instruction-1">
+                    <h3>Step 1</h3>
+                    <p>Define a function called `fibonacci` that takes a single parameter `n`.</p>
+                    <p class="hint" id="hint-1">The function should be named `fibonacci` and take one parameter.</p>
+                    <button class="hint-button" onclick="showHint(1)">I need a hint</button>
+                </div>
+                <div class="instruction" id="instruction-2" style="display: none;">
+                    <h3>Step 2</h3>
+                    <p>Check if `n` is 0 or 1. If so, return `n`.</p>
+                    <p class="hint" id="hint-2">The base cases for the Fibonacci sequence are when `n` is 0 or 1.</p>
+                    <button class="hint-button" onclick="showHint(2)">I need a hint</button>
+                </div>
+                <div class="instruction" id="instruction-3" style="display: none;">
+                    <h3>Step 3</h3>
+                    <p>Otherwise, return the sum of the two previous Fibonacci numbers.</p>
+                    <p class="hint" id="hint-3">Use the recursive formula: `fibonacci(n - 1) + fibonacci(n - 2)`.</p>
+                    <button class="hint-button" onclick="showHint(3)">I need a hint</button>
+                </div>
+            </div>
+        </div>
+        <div class="editor-section">
+            <div id="editor"></div>
+            <div class="buttons">
+                <button onclick="generateCode()">Generate Code</button>
+                <button onclick="fixCode()">Fix Code</button>
+                <button onclick="nextInstruction()">Next Instruction</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.js"></script>
+    <script>
+        let currentInstructionIndex = 0;
+        let editor;
+
+        const instructions = [
+            {
+                id: 1,
+                description: 'Define a function called `fibonacci` that takes a single parameter `n`.',
+                initialCode: 'function fibonacci(n) {\n  // Your code here\n}',
+                hint: 'The function should be named `fibonacci` and take one parameter.'
+            },
+            {
+                id: 2,
+                description: 'Check if `n` is 0 or 1. If so, return `n`.',
+                initialCode: 'function fibonacci(n) {\n  if (n === 0 || n === 1) {\n    return n;\n  }\n}',
+                hint: 'The base cases for the Fibonacci sequence are when `n` is 0 or 1.'
+            },
+            {
+                id: 3,
+                description: 'Otherwise, return the sum of the two previous Fibonacci numbers.',
+                initialCode: 'function fibonacci(n) {\n  if (n === 0 || n === 1) {\n    return n;\n  }\n  return fibonacci(n - 1) + fibonacci(n - 2);\n}',
+                hint: 'Use the recursive formula: `fibonacci(n - 1) + fibonacci(n - 2)`.'
+            }
+        ];
+
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                value: instructions[currentInstructionIndex].initialCode,
+                language: 'javascript',
+                theme: 'vs',
+                fontSize: 14
+            });
+        });
+
+        function updateInstruction() {
+            const currentInstruction = instructions[currentInstructionIndex];
+            document.getElementById('task-description').innerText = 'Write a function to find the nth Fibonacci number using recursion.';
+            document.getElementById(`instruction-${currentInstructionIndex + 1}`).style.display = 'block';
+            editor.setValue(currentInstruction.initialCode);
+        }
+
+        function generateCode() {
+            const currentInstruction = instructions[currentInstructionIndex];
+            editor.setValue(currentInstruction.initialCode);
+        }
+
+        function fixCode() {
+            const currentInstruction = instructions[currentInstructionIndex];
+            editor.setValue(currentInstruction.initialCode);
+        }
+
+        function nextInstruction() {
+            if (currentInstructionIndex < instructions.length - 1) {
+                currentInstructionIndex++;
+                updateInstruction();
+            }
+        }
+
+        function showHint(index) {
+            document.getElementById(`hint-${index}`).style.display = 'block';
+        }
+
+        updateInstruction();
+    </script>
+</body>
+</html>

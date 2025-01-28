@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visible Steps Code Tutor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/codemirror.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2F80ED;
+            --secondary: #4CAF50;
+            --background: #F8F9FA;
+            --text: #2D3436;
+            --border: #E0E0E0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            font-family: 'Inter', sans-serif;
+            background: var(--background);
+        }
+
+        .left-panel {
+            width: 35%;
+            padding: 2rem;
+            background: white;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+        }
+
+        .right-panel {
+            width: 65%;
+            padding: 2rem;
+        }
+
+        .task-header {
+            margin-bottom: 2rem;
+        }
+
+        .task-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        .instruction-steps {
+            margin: 2rem 0;
+        }
+
+        .step-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+
+        .step-card.current {
+            opacity: 1;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(47, 128, 237, 0.1);
+        }
+
+        .step-card.completed {
+            opacity: 1;
+            border-color: var(--secondary);
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .hint-section {
+            margin-top: 1rem;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .hint-section.visible {
+            max-height: 500px;
+        }
+
+        .hint-content {
+            background: #FFF9E1;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #FFD700;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .primary-btn {
+            background: var(--primary);
+            color: white;
+        }
+
+        .secondary-btn {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .hint-btn {
+            background: #FFF3CD;
+            color: #856404;
+        }
+
+        .CodeMirror {
+            height: 90vh;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .progress-container {
+            margin-bottom: 2rem;
+        }
+
+        .progress-text {
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="left-panel">
+        <div class="task-header">
+            <div class="task-title">Bank Account System Implementation</div>
+            <div class="progress-container">
+                <div class="progress-text">Current Step: <span id="current-step">1</span></div>
+            </div>
+        </div>
+
+        <div class="instruction-steps" id="instruction-steps">
+            <!-- Steps will be inserted here by JavaScript -->
+        </div>
+
+        <div class="button-group">
+            <button class="primary-btn" onclick="showNextStep()">▶️ Next Step</button>
+            <button class="hint-btn" onclick="toggleHint()">💡 I need a hint</button>
+            <button class="secondary-btn" onclick="showSolution()">🔧 Fix My Code</button>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <textarea id="code-editor"></textarea>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/mode/python/python.min.js"></script>
+    <script>
+        let currentStep = 0;
+        let editor;
+        
+        const task = {
+            title: "Bank Account System",
+            steps: [
+                {
+                    number: 1,
+                    instruction: "Create a BankAccount class with basic attributes:",
+                    details: [
+                        "- account_number (string)",
+                        "- account_holder (string)",
+                        "- balance (float, initialized to 0.0)"
+                    ],
+                    hints: [
+                        "Start by defining the class using the 'class' keyword",
+                        "Use __init__ method for initialization",
+                        "Remember to initialize balance to 0.0"
+                    ],
+                    code: "class BankAccount:\n    def __init__(self, account_number, account_holder):\n        # Your code here",
+                    solution: "class BankAccount:\n    def __init__(self, account_number, account_holder):\n        self.account_number = account_number\n        self.account_holder = account_holder\n        self.balance = 0.0"
+                },
+                {
+                    number: 2,
+                    instruction: "Add deposit functionality:",
+                    details: [
+                        "Method: deposit(amount)",
+                        "Validate amount > 0",
+                        "Update balance"
+                    ],
+                    hints: [
+                        "Create a method with 'def deposit(self, amount):'",
+                        "Use an if statement to validate the amount",
+                        "Add the amount to self.balance"
+                    ],
+                    code: "    def deposit(self, amount):\n        # Implement deposit logic",
+                    solution: "    def deposit(self, amount):\n        if amount <= 0:\n            raise ValueError('Amount must be positive')\n        self.balance += amount"
+                },
+                {
+                    number: 3,
+                    instruction: "Add withdraw functionality:",
+                    details: [
+                        "Method: withdraw(amount)",
+                        "Check sufficient funds",
+                        "Update balance"
+                    ],
+                    hints: [
+                        "The method structure is similar to deposit",
+                        "Check if amount > self.balance",
+                        "Subtract the amount from balance"
+                    ],
+                    code: "    def withdraw(self, amount):\n        # Implement withdrawal logic",
+                    solution: "    def withdraw(self, amount):\n        if amount <= 0:\n            raise ValueError('Amount must be positive')\n        if amount > self.balance:\n            raise ValueError('Insufficient funds')\n        self.balance -= amount"
+                }
+            ]
+        };
+
+        // Initialize CodeMirror editor
+        editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+            lineNumbers: true,
+            mode: 'python',
+            theme: 'default',
+            indentUnit: 4,
+            matchBrackets: true
+        });
+
+        // Initialize steps
+        function initializeSteps() {
+            const container = document.getElementById('instruction-steps');
+            task.steps.forEach((step, index) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = `step-card ${index === 0 ? 'current' : ''}`;
+                stepEl.innerHTML = `
+                    <div class="step-number">${step.number}</div>
+                    <h3>${step.instruction}</h3>
+                    <ul>${step.details.map(d => `<li>${d}</li>`).join('')}</ul>
+                    <div class="hint-section">
+                        <div class="hint-content">
+                            <strong>Hints:</strong>
+                            <ul>${step.hints.map(h => `<li>${h}</li>`).join('')}</ul>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(stepEl);
+            });
+            updateProgress();
+        }
+
+        function toggleHint() {
+            const currentCard = document.querySelectorAll('.step-card')[currentStep];
+            const hintSection = currentCard.querySelector('.hint-section');
+            hintSection.classList.toggle('visible');
+        }
+
+        function updateProgress() {
+            document.querySelectorAll('.step-card').forEach((card, index) => {
+                card.classList.remove('completed', 'current');
+                if (index < currentStep) card.classList.add('completed');
+                if (index === currentStep) card.classList.add('current');
+            });
+            document.getElementById('current-step').textContent = currentStep + 1;
+        }
+
+        function showNextStep() {
+            if (currentStep < task.steps.length - 1) {
+                currentStep++;
+                editor.setValue(task.steps[currentStep].code);
+                updateProgress();
+            }
+        }
+
+        function showSolution() {
+            let fullSolution = '';
+            for (let i = 0; i <= currentStep; i++) {
+                fullSolution += task.steps[i].solution + '\n\n';
+            }
+            editor.setValue(fullSolution.trim());
+        }
+
+        // Initialize the app
+        initializeSteps();
+        editor.setValue(task.steps[0].code);
+    </script>
+</body>
+</html>

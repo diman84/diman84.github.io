@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multi-Step Task with Next/Previous (No Hiding Past Steps)</title>
+
+  <!-- CodeMirror CSS (Core + Theme) -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/codemirror@5.65.8/lib/codemirror.css"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/codemirror@5.65.8/theme/material.css"
+  />
+
+  <!-- Optional: A Google Font for a more refined look -->
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+  />
+
+  <style>
+    /* Basic reset & layout */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Inter', sans-serif;
+      background: #f0f2f5;
+    }
+    #root {
+      height: 100vh;
+      width: 100%;
+    }
+    .app-container {
+      display: flex;
+      height: 100%;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 400px;
+      background: linear-gradient(135deg, #ffffff, #e3e6e9);
+      padding: 1rem 1.5rem;
+      border-right: 1px solid #ccc;
+      overflow-y: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .sidebar-title {
+      font-weight: 600;
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      color: #212121;
+    }
+
+    /* Instruction Card */
+    .instruction-card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 1rem;
+      transition: box-shadow 0.3s ease;
+      position: relative;
+    }
+    .instruction-card:hover {
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    }
+
+    /* Highlight the "active" step with a blue border */
+    .instruction-card.active {
+      border-left: 4px solid #007bff;
+      padding-left: calc(1.5rem - 4px);
+    }
+
+    .instruction-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .instruction-step-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #333;
+      margin: 0;
+    }
+
+    .instruction-description {
+      font-size: 0.95rem;
+      color: #444;
+      margin: 0.75rem 0;
+      line-height: 1.4;
+    }
+
+    /* Hint styling */
+    .hint-btn {
+      background: #007bff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.8rem;
+      color: #fff;
+      cursor: pointer;
+      margin-left: 1rem;
+      transition: background 0.3s;
+    }
+    .hint-btn:hover {
+      background: #005cbf;
+    }
+    .hint {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: #fffcdb;
+      border-left: 3px solid #ffcc00;
+      border-radius: 4px;
+      font-style: italic;
+      color: #444;
+      line-height: 1.4;
+      display: none;
+    }
+    .hint.visible {
+      display: block; /* show when toggled */
+    }
+
+    /* Next/Previous Buttons */
+    .nav-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    .btn {
+      background: #007bff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .btn:hover {
+      background: #005cbf;
+    }
+    .btn:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    /* Main section (toolbar + code editor) */
+    .main-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Toolbar (top of right panel) */
+    .toolbar-container {
+      display: flex;
+      gap: 0.5rem;
+      background: #ffffff;
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid #ccc;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      z-index: 10;
+      align-items: center;
+    }
+    .toolbar-container button {
+      background: #28a745;
+      border: none;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .toolbar-container button:hover {
+      background: #218838;
+    }
+    .toolbar-container button:active {
+      background: #1e7e34;
+    }
+
+    /* Code Editor */
+    .editor-container {
+      flex: 1;
+      position: relative;
+      background: #fdfdfd;
+    }
+    .editor-container .CodeMirror {
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React & ReactDOM (UMD) -->
+  <script
+    src="https://unpkg.com/react@18.2.0/umd/react.development.js"
+    crossorigin
+  ></script>
+  <script
+    src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"
+    crossorigin
+  ></script>
+
+  <!-- Babel Standalone (to compile our JSX/ES6 in the browser) -->
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <!-- CodeMirror JS -->
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.8/lib/codemirror.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.8/mode/javascript/javascript.js"></script>
+
+  <!-- Main React code via Babel -->
+  <script type="text/babel">
+    /****************************************
+     * CodeEditor Component
+     ****************************************/
+    class CodeEditor extends React.Component {
+      constructor(props) {
+        super(props);
+        this.textareaRef = React.createRef();
+        this.editor = null;
+      }
+
+      componentDidMount() {
+        // Initialize CodeMirror
+        this.editor = CodeMirror.fromTextArea(this.textareaRef.current, {
+          mode: 'javascript',
+          theme: 'material',
+          lineNumbers: true
+        });
+        this.editor.setValue(this.props.code);
+        this.editor.on('change', this.handleChange.bind(this));
+      }
+
+      componentDidUpdate(prevProps) {
+        if (prevProps.code !== this.props.code) {
+          this.editor.setValue(this.props.code);
+        }
+      }
+
+      handleChange() {
+        const value = this.editor.getValue();
+        this.props.onCodeChange(value);
+      }
+
+      render() {
+        return (
+          <div className="editor-container">
+            <textarea ref={this.textareaRef} defaultValue={this.props.code} />
+          </div>
+        );
+      }
+    }
+
+    /****************************************
+     * InstructionCard Component
+     ****************************************/
+    function InstructionCard({ step, isActive, hintVisible, onToggleHint }) {
+      return (
+        <div className={`instruction-card ${isActive ? "active" : ""}`}>
+          <div className="instruction-header">
+            <h3 className="instruction-step-title">{step.title}</h3>
+            <button className="hint-btn" onClick={onToggleHint}>
+              Show Hint
+            </button>
+          </div>
+          <p className="instruction-description">{step.description}</p>
+          <div className={`hint ${hintVisible ? "visible" : ""}`}>
+            <strong>Hint:</strong> {step.hint}
+          </div>
+        </div>
+      );
+    }
+
+    /****************************************
+     * Main App
+     ****************************************/
+    function App() {
+      // A single complicated task with multiple step-by-step instructions
+      const steps = [
+        {
+          id: 1,
+          title: "Step 1",
+          description: "Create a basic HTML structure with buttons for digits/operators and a display area.",
+          hint: "Use <button> tags for digits/operators, and a <div> or <input> to show results."
+        },
+        {
+          id: 2,
+          title: "Step 2",
+          description: "Implement addition, subtraction, multiplication, and division in JavaScript.",
+          hint: "Think: function add(a,b){return a+b;} and so on."
+        },
+        {
+          id: 3,
+          title: "Step 3",
+          description: "Connect your JS functions to the calculator buttons to update the display in real time.",
+          hint: "Add event listeners or onClick to call the math functions whenever a button is pressed."
+        },
+        {
+          id: 4,
+          title: "Step 4",
+          description: "Handle edge cases (decimal inputs, negative numbers, dividing by zero, etc.).",
+          hint: "Check for zero before dividing. Make sure your display can handle decimals and negatives."
+        },
+        {
+          id: 5,
+          title: "Step 5",
+          description: "Refactor for maintainability: break large functions into smaller ones, separate logic from UI, etc.",
+          hint: "Use modules or classes to group related logic. Keep functions short and focused."
+        }
+      ];
+
+      /*
+        currentStep: The step the user is "focused" on right now.
+        maxStepReached: The highest (index) of instructions we have revealed so far.
+      */
+      const [currentStep, setCurrentStep] = React.useState(0); 
+      const [maxStepReached, setMaxStepReached] = React.useState(0);
+
+      // Track which hints are visible (boolean array for each step)
+      const [hintVisibility, setHintVisibility] = React.useState(
+        Array(steps.length).fill(false)
+      );
+
+      // Code editor state
+      const [code, setCode] = React.useState("// Start coding your calculator here...\n");
+
+      /***************************************
+       * Next / Previous Buttons
+       ***************************************/
+      const handleNext = () => {
+        if (currentStep < steps.length - 1) {
+          const newStep = currentStep + 1;
+          setCurrentStep(newStep);
+          // Update max step if needed
+          if (newStep > maxStepReached) {
+            setMaxStepReached(newStep);
+          }
+        }
+      };
+
+      const handlePrevious = () => {
+        if (currentStep > 0) {
+          setCurrentStep(currentStep - 1);
+        }
+      };
+
+      /***************************************
+       * Toolbar Handlers (Generate/Fix/Check)
+       ***************************************/
+      const handleGenerateCode = () => {
+        // Example placeholder
+        const generatedCode = `/* Auto-generated code (demo) */\n
+function add(a, b) {
+  return a + b;
+}
+function subtract(a, b) {
+  return a - b;
+}
+function multiply(a, b) {
+  return a * b;
+}
+function divide(a, b) {
+  if(b === 0) {
+    console.error("Cannot divide by zero");
+    return null;
+  }
+  return a / b;
+}
+// Additional code here...
+`;
+        setCode(generatedCode);
+      };
+
+      const handleFixCode = () => {
+        // Example placeholder
+        setCode((prev) => prev + "\n// Code fix placeholder: no issues found!");
+      };
+
+      const handleCheckCode = () => {
+        // Example placeholder
+        alert("Check My Code: Not implemented!");
+      };
+
+      /***************************************
+       * Toggling hints for each step
+       ***************************************/
+      const toggleHint = (index) => {
+        setHintVisibility((prev) => {
+          const updated = [...prev];
+          updated[index] = !updated[index];
+          return updated;
+        });
+      };
+
+      return (
+        <div className="app-container">
+          {/* Left Sidebar with instructions */}
+          <div className="sidebar">
+            <h2 className="sidebar-title">Build a JS Calculator</h2>
+
+            {/* Navigation Buttons (Next/Previous) */}
+            <div className="nav-buttons">
+              <button className="btn" onClick={handlePrevious} disabled={currentStep === 0}>
+                Previous
+              </button>
+              <button className="btn" onClick={handleNext} disabled={currentStep === steps.length - 1}>
+                Next
+              </button>
+            </div>
+
+            {/* Render all steps up to maxStepReached */}
+            {steps.slice(0, maxStepReached + 1).map((step, index) => {
+              // isActive means it's the currently selected step
+              const isActive = index === currentStep;
+              return (
+                <InstructionCard
+                  key={step.id}
+                  step={step}
+                  isActive={isActive}
+                  hintVisible={hintVisibility[index]}
+                  onToggleHint={() => toggleHint(index)}
+                />
+              );
+            })}
+          </div>
+
+          {/* Main section with toolbar + code editor */}
+          <div className="main-section">
+            <div className="toolbar-container">
+              <button onClick={handleGenerateCode}>Generate Code</button>
+              <button onClick={handleFixCode}>Fix Code</button>
+              <button onClick={handleCheckCode}>Check Code</button>
+            </div>
+            <CodeEditor code={code} onCodeChange={setCode} />
+          </div>
+        </div>
+      );
+    }
+
+    /****************************************
+     * Render App
+     ****************************************/
+    const rootElement = document.getElementById("root");
+    ReactDOM.createRoot(rootElement).render(<App />);
+  </script>
+</body>
+</html>
